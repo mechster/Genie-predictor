@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1'>
+<title>Genie — Simple Working Predictor</title>
+<style>
+body{margin:0;padding:14px;font-family:Arial,Helvetica,sans-serif;background:#071029;color:#fff}
+.box{background:#0b2440;padding:12px;border-radius:10px;margin-bottom:12px}
+h2{margin:0 0 8px;font-size:20px;text-align:center}
+label{display:block;color:#9fb3d6;margin-bottom:6px}
+input,button{width:100%;padding:10px;border-radius:8px;border:none;background:#0f2133;color:#e6eef8;font-size:15px}
+button{margin-top:8px;background:#0ea5a4;color:#021124;font-weight:700}
+.red{background:#ff5b5b;color:#fff}
+.value{font-size:22px;font-weight:700}
+#history{max-height:260px;overflow-y:auto;background:#0f1e32;padding:8px;border-radius:8px;-webkit-overflow-scrolling:touch}
+.item{padding:8px;border-bottom:1px solid rgba(255,255,255,0.1)}
+.status{font-size:13px;color:#cfe8ff;margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class='box'>
+<h2>Genie — Simple Working Predictor</h2>
+<label>Base Bet (₹)</label>
+<input id='baseBet' type='number' value='100' min='1'>
+<div class='status' id='status'>Status: ready</div>
+</div>
+
+<div class='box'>
+<div>Prediction: <span id='pred' class='value'>—</span></div>
+<div>Confidence: <span id='conf' class='value'>—</span></div>
+<button id='placeBtn'>Place Bet</button>
+<button id='clearBtn' class='red'>Clear Bet</button>
+</div>
+
+<div class='box'>
+<div>Next Bet: <span id='next' class='value'>₹0</span></div>
+<div>Step: <span id='step' class='value'>0</span></div>
+<div>Profit: <span id='profit' class='value'>₹0</span></div>
+</div>
+
+<div class='box'>
+<button id='playerBtn'>Record Player (P)</button>
+<button id='bankerBtn'>Record Banker (B)</button>
+</div>
+
+<div class='box'>
+<h3 style='margin-top:0'>History (latest first)</h3>
+<div id='history'></div>
+</div>
+
+<script>
+window.onload = function() {
+  var baseBet=document.getElementById('baseBet');
+  var predEl=document.getElementById('pred');
+  var confEl=document.getElementById('conf');
+  var nextEl=document.getElementById('next');
+  var stepEl=document.getElementById('step');
+  var profitEl=document.getElementById('profit');
+  var statusEl=document.getElementById('status');
+  var historyBox=document.getElementById('history');
+
+  var placeBtn=document.getElementById('placeBtn');
+  var clearBtn=document.getElementById('clearBtn');
+  var playerBtn=document.getElementById('playerBtn');
+  var bankerBtn=document.getElementById('bankerBtn');
+
+  var history=[], profit=0, step=0, activeBet=null;
+  var mild=[1,1,1,2,2,3,3,4,5,7,9,12,16,22,30,40,53,70,90];
+
+  function addItem(t){
+    var d=document.createElement('div');
+    d.className='item';
+    d.textContent=t;
+    if(historyBox.firstChild) historyBox.insertBefore(d,historyBox.firstChild);
+    else historyBox.appendChild(d);
+  }
+
+  function predict(){
+    var arr=history.slice(-10);
+    if(arr.length===0) return {pred:null,conf:0};
+    var P=arr.filter(x=>x==='P').length;
+    var B=arr.filter(x=>x==='B').length;
+    var pred=(P>=B)?'P':'B';
+    var conf=Math.max(P,B)/arr.length;
+    return {pred,conf};
+  }
+
+  function updateUI(){
+    var base=Number(baseBet.value)||100;
+    nextEl.textContent='₹'+(mild[step]*base);
+    stepEl.textContent=step;
+    profitEl.textContent='₹'+profit;
+    var r=predict();
+    predEl.textContent=r.pred||'—';
+    confEl.textContent=r.conf?Math.round(r.conf*100)+'%':'—';
+    statusEl.textContent=activeBet?'Status: Bet '+activeBet.side+' @ ₹'+activeBet.amount:'Status: ready';
+  }
+
+  baseBet.onchange=function(){ updateUI(); };
+
+  placeBtn.onclick=function(){
+    var r=predict();
+    if(!r.pred){ alert('Record some outcomes first'); return; }
+    var base=Number(baseBet.value)||100;
+    activeBet={side:r.pred,amount:mild[step]*base};
+    addItem('BET → '+activeBet.side+' @ ₹'+activeBet.amount);
+    updateUI();
+  };
+
+  clearBtn.onclick=function(){
+    activeBet=null;
+    addItem('Bet cleared');
+    updateUI();
+  };
+
+  function recordOutcome(x){
+    history.push(x);
+    addItem('RESULT → '+x);
+
+    if(activeBet){
+      if(activeBet.side===x){
+        profit+=activeBet.amount;
+        step=Math.max(0,step-1);
+        addItem('WIN +₹'+activeBet.amount);
+      } else {
+        profit-=activeBet.amount;
+        step=Math.min(step+1,mild.length-1);
+        addItem('LOSS -₹'+activeBet.amount);
+      }
+      activeBet=null;
+    }
+    updateUI();
+  }
+
+  playerBtn.onclick=function(){ recordOutcome('P'); };
+  bankerBtn.onclick=function(){ recordOutcome('B'); };
+
+  updateUI();
+};
+</script>
+
+</body>
+</html>
