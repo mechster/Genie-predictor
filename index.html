@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Baccarat V77.2: Golden Ratchet</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            background-color: #0f1115; 
+            color: #ffffff; 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* --- 1. HEADER (Bankroll & Config) --- */
+        .app-header {
+            flex: 0 0 auto;
+            background: linear-gradient(180deg, #1a1d24 0%, #13151b 100%);
+            border-bottom: 1px solid #2a2e38;
+            padding: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        .config-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 10px; background: #21252e; padding: 8px; border-radius: 8px;
+        }
+        
+        .input-group { display: flex; flex-direction: column; }
+        .input-label { font-size: 0.65rem; color: #888; margin-bottom: 2px; text-transform: uppercase; }
+        .bank-input { 
+            background: transparent; border: none; border-bottom: 1px solid #444; 
+            color: #fff; font-weight: bold; font-size: 1rem; width: 100px;
+        }
+        .bank-input:focus { outline: none; border-color: #ffd700; }
+
+        .unit-display { text-align: right; }
+        .unit-val { color: #ffd700; font-weight: bold; font-size: 1rem; }
+
+        /* Main Stats Row */
+        .main-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 5px; }
+        .stat-card { 
+            background: #161922; border: 1px solid #2a2e38; padding: 8px; 
+            border-radius: 6px; text-align: center;
+        }
+        .stat-title { font-size: 0.65rem; color: #8b949e; margin-bottom: 2px; letter-spacing: 1px; }
+        .stat-value { font-size: 1.4rem; font-weight: 800; }
+        .pos { color: #00e676; } .neg { color: #ff5252; } .neutral { color: #fff; }
+
+        /* Scrollable Minor Stats */
+        .stats-scroller {
+            display: flex; overflow-x: auto; gap: 8px; padding-bottom: 5px;
+            scrollbar-width: none;
+        }
+        .mini-stat {
+            background: #21252e; padding: 5px 10px; border-radius: 4px; 
+            min-width: 80px; text-align: center; flex-shrink: 0; border: 1px solid #30363d;
+        }
+        .mini-label { font-size: 0.6rem; color: #666; }
+        .mini-val { font-size: 0.9rem; font-weight: bold; }
+
+        /* --- 2. SCOPE AREA --- */
+        .scope-container {
+            flex: 0 0 170px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: #0b0d11;
+            position: relative;
+            border-bottom: 1px solid #2a2e38;
+            transition: border-left 0.3s;
+        }
+        .mode-base { border-left: 6px solid #00e676; }
+        .mode-ratchet { border-left: 6px solid #ffab00; background: radial-gradient(circle at center, #1a1200, #0b0d11); }
+
+        .status-pill {
+            position: absolute; top: 10px;
+            font-size: 0.7rem; font-weight: 800; letter-spacing: 1px;
+            padding: 3px 10px; border-radius: 20px;
+        }
+        .mode-base .status-pill { background: #003300; color: #00e676; border: 1px solid #00e676; }
+        .mode-ratchet .status-pill { background: #332200; color: #ffab00; border: 1px solid #ffab00; }
+
+        .main-pred { font-size: 3.5rem; font-weight: 900; line-height: 1; margin: 5px 0; }
+        .banker { color: #ff5252; text-shadow: 0 0 25px rgba(255, 82, 82, 0.3); } 
+        .player { color: #2979ff; text-shadow: 0 0 25px rgba(41, 121, 255, 0.3); } 
+        .wait { color: #444; }
+
+        .bet-box { display: flex; flex-direction: column; align-items: center; }
+        .bet-cash { 
+            font-size: 1.4rem; font-weight: 800; color: #fff; 
+            background: #1c1f26; padding: 4px 20px; border-radius: 30px;
+            border: 1px solid #333; min-width: 120px; text-align: center;
+        }
+        .mode-ratchet .bet-cash { border-color: #ffab00; color: #ffab00; }
+        .bet-units { font-size: 0.8rem; color: #666; margin-top: 2px; }
+
+        /* --- 3. HISTORY LIST --- */
+        .list-container {
+            flex: 1; overflow-y: auto; background: #08090c; padding: 0;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { 
+            position: sticky; top: 0; background: #161922; color: #888; 
+            padding: 8px; font-size: 0.7rem; border-bottom: 1px solid #2a2e38; z-index: 10;
+        }
+        td { text-align: center; padding: 10px; border-bottom: 1px solid #1a1d26; color: #ccc; }
+        .res-win { color: #00e676; font-weight: bold; background: rgba(0, 230, 118, 0.05); } 
+        .res-loss { color: #ff5252; }
+
+        /* --- 4. TOOLBAR & INPUTS --- */
+        .tools-bar {
+            flex: 0 0 50px;
+            display: flex; gap: 5px; padding: 5px 10px;
+            background: #161922; border-top: 1px solid #2a2e38;
+        }
+        .btn-tool {
+            flex: 1; border: 1px solid #30363d; background: #21252e; color: #a3aab5;
+            border-radius: 4px; font-size: 0.8rem; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .btn-tool:active { background: #30363d; }
+
+        .input-bar {
+            flex: 0 0 70px; display: flex; gap: 2px;
+            background: #0f1115; border-top: 1px solid #2a2e38;
+        }
+        .btn-input { 
+            flex: 1; border: none; font-size: 1rem; font-weight: 800; 
+            color: #fff; cursor: pointer; transition: opacity 0.1s;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .btn-input span { font-size: 0.65rem; font-weight: normal; opacity: 0.7; }
+        .btn-p { background: linear-gradient(180deg, #1e88e5, #1565c0); } 
+        .btn-b { background: linear-gradient(180deg, #e53935, #c62828); }
+        .btn-input:active { opacity: 0.8; }
+
+        /* Toasts */
+        .toast-box {
+            position: absolute; bottom: 140px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; gap: 5px; align-items: center; z-index: 50;
+        }
+        .flip-toast {
+            background: rgba(0,0,0,0.9); color: #ffd700; border: 1px solid #ffd700;
+            padding: 8px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: bold;
+            display: none; animation: popUp 0.3s ease-out;
+        }
+        .lock-toast {
+            background: rgba(0, 230, 118, 0.9); color: #003300; border: 1px solid #00e676;
+            padding: 8px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: bold;
+            display: none; animation: popUp 0.3s ease-out;
+        }
+        @keyframes popUp { 0% { transform: translateY(10px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="app-header">
+        <div class="config-bar">
+            <div class="input-group">
+                <span class="input-label">STARTING BANKROLL</span>
+                <input type="number" id="start-bank" class="bank-input" value="1000" onchange="recalcBankroll()">
+            </div>
+            <div class="unit-display">
+                <div class="input-label">UNIT SIZE (1%)</div>
+                <div id="unit-val" class="unit-val">$10</div>
+            </div>
+        </div>
+
+        <div class="main-stats">
+            <div class="stat-card">
+                <div class="stat-title">SESSION PROFIT</div>
+                <div id="session-pl" class="stat-value neutral">$0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">CURRENT BANKROLL</div>
+                <div id="current-bank" class="stat-value neutral">$1,000</div>
+            </div>
+        </div>
+
+        <div class="stats-scroller">
+            <div class="mini-stat">
+                <div class="mini-label">WIN RATE</div>
+                <div id="wr-val" class="mini-val">0%</div>
+            </div>
+            <div class="mini-stat">
+                <div class="mini-label">HANDS</div>
+                <div id="hands-val" class="mini-val">0</div>
+            </div>
+            <div class="mini-stat">
+                <div class="mini-label">WINS</div>
+                <div id="wins-val" class="mini-val" style="color:#00e676">0</div>
+            </div>
+            <div class="mini-stat">
+                <div class="mini-label">LOSSES</div>
+                <div id="loss-val" class="mini-val" style="color:#ff5252">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prediction Scope -->
+    <div id="scope-bg" class="scope-container mode-base">
+        <div id="status-pill" class="status-pill">BASE MODE</div>
+        <div id="main-pred" class="main-pred wait">WAIT</div>
+        <div class="bet-box">
+            <div id="bet-cash" class="bet-cash">$0</div>
+            <div id="bet-units" class="bet-units">0 Units</div>
+        </div>
+    </div>
+
+    <div class="toast-box">
+        <div id="toast" class="flip-toast">⚡ LOGIC FLIPPED</div>
+        <div id="lock-toast" class="lock-toast">🔒 PROFIT LOCK</div>
+    </div>
+
+    <!-- GENIE CHARACTER -->
+    <div id="genie-wrapper" class="genie-wrapper" style="position:fixed; top:20%; left:10%; z-index:90; pointer-events:none; transition: top 3s ease-in-out, left 3s ease-in-out;">
+        <div id="genie-msg" style="position:absolute; top:-10px; background:#fff; color:#000; font-size:0.8rem; font-weight:800; padding:4px 12px; border-radius:12px; opacity:0; transform:scale(0.8); transition:all 0.3s; white-space:nowrap; box-shadow:0 4px 8px rgba(0,0,0,0.3);">WIN!</div>
+        <img src="genie.jpeg" id="genie-body" alt="Genie" style="width:120px; height:auto; animation:genieFloat 3s infinite ease-in-out; filter:drop-shadow(0 0 10px rgba(0,230,118,0.5));" onerror="this.style.display='none'">
+    </div>
+    <style>
+        @keyframes genieFloat { 0% { transform:translateY(0); } 50% { transform:translateY(-15px) rotate(3deg); } 100% { transform:translateY(0); } }
+        .celebrating #genie-body { animation: genieWin 0.8s ease-in-out; }
+        .celebrating #genie-msg { opacity:1; transform:scale(1); top:-30px; }
+        @keyframes genieWin { 0% { transform:scale(1); } 50% { transform:scale(1.2) rotate(-10deg); } 100% { transform:scale(1); } }
+    </style>
+
+    <!-- History Table -->
+    <div class="list-container">
+        <table>
+            <thead><tr><th>#</th><th>LOGIC</th><th>PRED</th><th>BET</th><th>P/L</th></tr></thead>
+            <tbody id="history-rows"></tbody>
+        </table>
+    </div>
+
+    <!-- Tools -->
+    <div class="tools-bar">
+        <button class="btn-tool" onclick="undoLastHand()">
+            <span>↩</span> UNDO
+        </button>
+        <button class="btn-tool" onclick="resetGame()">
+            <span>🗑</span> CLEAR SHOE
+        </button>
+    </div>
+
+    <!-- Input Buttons -->
+    <div class="input-bar">
+        <button class="btn-input btn-p" onclick="recordHand('P')">
+            PLAYER
+            <span>PUNTO</span>
+        </button>
+        <button class="btn-input btn-b" onclick="recordHand('B')">
+            BANKER
+            <span>BANCO (5%)</span>
+        </button>
+    </div>
+
+<script>
+    // --- STATE ---
+    let history = [];
+    
+    // Financials
+    let startBankroll = 1000;
+    let unitSize = 10;
+    let sessionProfitCash = 0;
+    let netProfitUnits = 0;
+    
+    // Stats
+    let totalWins = 0;
+    let totalLosses = 0;
+
+    // Ratchet Logic (V77 Engine)
+    let currentBetUnits = 1;
+    
+    // Prediction Logic (Golden Eye: 2-Back)
+    let predLogic = 'FOLLOW'; 
+    let consecutiveLosses = 0;
+
+    // --- INITIALIZATION ---
+    function recalcBankroll() {
+        startBankroll = parseFloat(document.getElementById('start-bank').value) || 1000;
+        unitSize = Math.floor(startBankroll / 100);
+        if (unitSize < 1) unitSize = 1;
+        document.getElementById('unit-val').innerText = "$" + unitSize;
+        updateUI();
+    }
+
+    function getPrediction() {
+        // GOLDEN EYE UPGRADE: Look 2 hands back
+        if (history.length < 3) return { side: 'B', ready: false }; 
+        
+        // history[0] is last hand (1-back)
+        // history[1] is 2-back
+        const twoBack = history[1].winner; 
+        
+        let prediction = (predLogic === 'FOLLOW') ? twoBack : (twoBack === 'B' ? 'P' : 'B');
+        return { side: prediction, ready: true };
+    }
+
+    function showToast(id) {
+        const el = document.getElementById(id);
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 2000);
+    }
+
+    // Genie
+    function initGenie() {
+        setInterval(() => {
+            const g = document.getElementById('genie-wrapper');
+            if (g.classList.contains('celebrating')) return;
+            const maxX = window.innerWidth - 150;
+            const maxY = window.innerHeight * 0.45;
+            g.style.left = Math.max(10, Math.floor(Math.random() * maxX)) + 'px';
+            g.style.top = Math.max(80, Math.floor(Math.random() * maxY)) + 'px';
+        }, 5000);
+    }
+    function celebrate(amt) {
+        const g = document.getElementById('genie-wrapper');
+        const m = document.getElementById('genie-msg');
+        m.innerText = "+$" + amt.toFixed(0);
+        g.classList.add('celebrating');
+        setTimeout(() => g.classList.remove('celebrating'), 800);
+    }
+
+    function recordHand(winner, isReplay = false) {
+        const predObj = getPrediction();
+        
+        let betUnits = currentBetUnits;
+        let betCash = betUnits * unitSize;
+        let actualPL = 0; 
+        let profitChangeUnits = 0; 
+        let resClass = '';
+        let logicSwitched = false;
+
+        if (predObj.ready) {
+            const isWin = (predObj.side === winner);
+
+            if (isWin) {
+                // WIN
+                if (winner === 'B') actualPL = betCash * 0.95;
+                else actualPL = betCash;
+                
+                profitChangeUnits = betUnits;
+                resClass = 'res-win';
+                totalWins++;
+                consecutiveLosses = 0;
+                
+                // Ratchet Logic: Reset if overall profitable
+                if (netProfitUnits + profitChangeUnits >= 0) {
+                    currentBetUnits = 1; 
+                } else {
+                    // Profit Lock: If win big (>5u), cut next bet in half
+                    if (currentBetUnits > 5) {
+                        currentBetUnits = Math.ceil(currentBetUnits / 2);
+                        if (!isReplay) showToast('lock-toast');
+                    }
+                }
+
+            } else {
+                // LOSS
+                actualPL = -betCash;
+                profitChangeUnits = -betUnits;
+                resClass = 'res-loss';
+                totalLosses++;
+                
+                currentBetUnits++;
+                if (currentBetUnits > 15) currentBetUnits = 15; 
+
+                // Logic Switch (2 Consecutive Losses)
+                consecutiveLosses++;
+                if (consecutiveLosses >= 2) {
+                    predLogic = (predLogic === 'FOLLOW') ? 'OPPOSITE' : 'FOLLOW';
+                    consecutiveLosses = 0; 
+                    logicSwitched = true;
+                    if (!isReplay) showToast('toast');
+                }
+            }
+        } else {
+            predObj.side = '-';
+        }
+
+        sessionProfitCash += actualPL;
+        netProfitUnits += profitChangeUnits;
+
+        history.unshift({
+            id: history.length + 1,
+            winner: winner,
+            logic: logicSwitched ? 'FLIP' : (predLogic === 'FOLLOW' ? 'FOL' : 'OPP'),
+            pred: predObj.ready ? predObj.side : '-',
+            betUnits: predObj.ready ? betUnits : 0,
+            plCash: actualPL,
+            resClass: resClass
+        });
+
+        if (!isReplay && actualPL > 0) celebrate(actualPL);
+        if (!isReplay) updateUI();
+    }
+
+    function undoLastHand() {
+        if (history.length === 0) return;
+        let winnersToReplay = history.slice(1).map(h => h.winner).reverse();
+        
+        history = [];
+        sessionProfitCash = 0;
+        netProfitUnits = 0;
+        currentBetUnits = 1;
+        predLogic = 'FOLLOW';
+        consecutiveLosses = 0;
+        totalWins = 0;
+        totalLosses = 0;
+
+        winnersToReplay.forEach(w => recordHand(w, true));
+        updateUI();
+    }
+
+    function resetGame() {
+        history = [];
+        sessionProfitCash = 0;
+        netProfitUnits = 0;
+        currentBetUnits = 1;
+        predLogic = 'FOLLOW';
+        consecutiveLosses = 0;
+        totalWins = 0;
+        totalLosses = 0;
+        recalcBankroll();
+        updateUI();
+    }
+
+    function updateUI() {
+        const sPLEl = document.getElementById('session-pl');
+        sPLEl.innerText = (sessionProfitCash >= 0 ? "+$" : "-$") + Math.abs(sessionProfitCash).toFixed(2);
+        sPLEl.className = sessionProfitCash >= 0 ? "stat-value pos" : "stat-value neg";
+
+        const curBank = startBankroll + sessionProfitCash;
+        document.getElementById('current-bank').innerText = "$" + curBank.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        document.getElementById('hands-val').innerText = history.length;
+        document.getElementById('wins-val').innerText = totalWins;
+        document.getElementById('loss-val').innerText = totalLosses;
+        
+        let wr = history.length > 0 ? ((totalWins / (totalWins + totalLosses || 1)) * 100).toFixed(0) : 0;
+        document.getElementById('wr-val').innerText = wr + "%";
+
+        const next = getPrediction();
+        const mainP = document.getElementById('main-pred');
+        const betCashEl = document.getElementById('bet-cash');
+        const betUnitEl = document.getElementById('bet-units');
+        const bg = document.getElementById('scope-bg');
+        const pill = document.getElementById('status-pill');
+
+        if (netProfitUnits < 0) {
+            bg.className = "scope-container mode-ratchet";
+            pill.innerText = "RECOVERY MODE";
+        } else {
+            bg.className = "scope-container mode-base";
+            pill.innerText = "BASE MODE";
+        }
+
+        if (next.ready) {
+            mainP.innerText = next.side === 'B' ? 'BANKER' : 'PLAYER';
+            mainP.className = "main-pred " + (next.side === 'B' ? 'banker' : 'player');
+            
+            let cashBet = currentBetUnits * unitSize;
+            betCashEl.innerText = "$" + cashBet.toLocaleString();
+            betUnitEl.innerText = currentBetUnits + " Units";
+        } else {
+            mainP.innerText = "WAIT";
+            mainP.className = "main-pred wait";
+            betCashEl.innerText = "$0";
+            betUnitEl.innerText = "Input 3 Hands"; // Updated text for 2-back
+        }
+
+        const tbody = document.getElementById('history-rows');
+        tbody.innerHTML = '';
+        history.forEach(row => {
+            const tr = document.createElement('tr');
+            let plText = row.plCash > 0 ? "+$" + row.plCash.toFixed(0) : (row.plCash < 0 ? "-$" + Math.abs(row.plCash).toFixed(0) : "--");
+            tr.innerHTML = `
+                <td>${row.id}</td>
+                <td style="font-size:0.7rem; color:${row.logic==='FLIP'?'#ffd700':'#888'}">${row.logic}</td>
+                <td style="font-weight:bold; color:#fff;">${row.pred}</td>
+                <td>${row.betUnits > 0 ? row.betUnits : '-'}</td>
+                <td class="${row.resClass}">${plText}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    recalcBankroll();
+    initGenie();
+</script>
+</body>
+</html>
